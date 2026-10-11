@@ -1,158 +1,53 @@
-module traffic_controller #(
-    parameter CLOCK_HZ = 50000000
-)(
-    input clk,
-    input [4:0] sw,
-    output reg [7:0] led
-);
+# FPGA-Based Emergency-Aware Traffic Junction Controller
 
-    localparam GREEN_TIME   = 5 * CLOCK_HZ;
-    localparam YELLOW_TIME  = 2 * CLOCK_HZ;
-    localparam ALL_RED_TIME = 1 * CLOCK_HZ;
+## Project Description
+This project implements an FPGA-based emergency-aware traffic junction controller using Verilog HDL. It is designed for the Cyclone II EP2C8T144C8 FPGA board using Quartus II software. The system controls traffic signals for a four-road junction using a Finite State Machine (FSM) and a timer. When an emergency vehicle is detected, the controller prioritizes the selected road after safe Yellow and All-Red transitions.
 
-    localparam GREEN       = 3'd0;
-    localparam YELLOW      = 3'd1;
-    localparam CLEAR_RED   = 3'd2;
-    localparam EMERGENCY   = 3'd3;
-    localparam RETURN_RED  = 3'd4;
+## Key Features
+- Automatic traffic signal sequencing for four roads.
+- Emergency vehicle priority control.
+- Safe Yellow and All-Red transitions.
+- Switch-based emergency detection.
+- LED-based traffic signal indication.
+- FSM-based control logic with a timer.
 
-    reg [2:0] state;
-    reg [31:0] timer;
+## Hardware Requirements
+- Cyclone II EP2C8T144C8 FPGA board
+- 5 input switches
+- 8 LEDs
+- Clock input
 
-    reg [1:0] road;
-    reg [1:0] emergency_road;
-    reg emergency_pending;
+## Software Requirements
+- Quartus II
+- Verilog HDL
 
-    // FSM
-    always @(posedge clk) begin
+## Input Configuration
+- SW[0] – Reset
+- SW[1] – Emergency request
+- SW[3:2] – Emergency road selection
+- SW[4] – Emergency completion
 
-        if (sw[0]) begin
-            state <= GREEN;
-            timer <= 0;
-            road <= 0;
-            emergency_road <= 0;
-            emergency_pending <= 0;
-        end
-        else begin
+## Output Configuration
+Two LEDs represent each road's traffic signal:
+- 00 – Red
+- 01 – Yellow
+- 10 – Green
 
-            case (state)
+## Working Principle
+1. The controller cycles through four roads during normal operation.
+2. An emergency request selects the road requiring priority.
+3. The active road changes to Yellow, followed by an All-Red interval.
+4. The selected emergency road receives Green while other roads remain Red.
+5. After the emergency is cleared, normal operation resumes.
 
-                GREEN: begin
-                    if (sw[1] && !emergency_pending) begin
-                        emergency_road <= sw[3:2];
-                        emergency_pending <= 1'b1;
-                        timer <= 0;
-                        state <= YELLOW;
-                    end
-                    else if (timer >= GREEN_TIME - 1) begin
-                        timer <= 0;
-                        state <= YELLOW;
-                    end
-                    else begin
-                        timer <= timer + 1'b1;
-                    end
-                end
+## Applications
+- Smart traffic junctions
+- Emergency vehicle priority systems
+- FPGA-based traffic control prototypes
+- Digital system design education
 
-                YELLOW: begin
-                    if (timer >= YELLOW_TIME - 1) begin
-                        timer <= 0;
+## Tools and Technologies
+Verilog HDL, FPGA, Cyclone II, Quartus II, FSM.
 
-                        if (emergency_pending || sw[1]) begin
-                            if (sw[1] && !emergency_pending) begin
-                                emergency_road <= sw[3:2];
-                                emergency_pending <= 1'b1;
-                            end
-                            state <= CLEAR_RED;
-                        end
-                        else begin
-                            road <= road + 1'b1;
-                            state <= GREEN;
-                        end
-                    end
-                    else begin
-                        timer <= timer + 1'b1;
-                    end
-                end
-
-                CLEAR_RED: begin
-                    if (timer >= ALL_RED_TIME - 1) begin
-                        timer <= 0;
-                        state <= EMERGENCY;
-                    end
-                    else begin
-                        timer <= timer + 1'b1;
-                    end
-                end
-
-                EMERGENCY: begin
-                    timer <= 0;
-                    if (sw[4])
-                        state <= RETURN_RED;
-                end
-
-                RETURN_RED: begin
-                    if (timer >= ALL_RED_TIME - 1) begin
-                        timer <= 0;
-                        emergency_pending <= 0;
-                        road <= emergency_road;
-                        state <= GREEN;
-                    end
-                    else begin
-                        timer <= timer + 1'b1;
-                    end
-                end
-
-                default: begin
-                    state <= GREEN;
-                    timer <= 0;
-                end
-
-            endcase
-        end
-    end
-
-    // LED output decoder
-    always @(*) begin
-
-        led = 8'b00000000;
-
-        case (state)
-
-            GREEN: begin
-                case (road)
-                    2'd0: led[1:0] = 2'b10;
-                    2'd1: led[3:2] = 2'b10;
-                    2'd2: led[5:4] = 2'b10;
-                    2'd3: led[7:6] = 2'b10;
-                endcase
-            end
-
-            YELLOW: begin
-                case (road)
-                    2'd0: led[1:0] = 2'b01;
-                    2'd1: led[3:2] = 2'b01;
-                    2'd2: led[5:4] = 2'b01;
-                    2'd3: led[7:6] = 2'b01;
-                endcase
-            end
-
-            CLEAR_RED, RETURN_RED: begin
-                led = 8'b00000000;
-            end
-
-            EMERGENCY: begin
-                case (emergency_road)
-                    2'd0: led[1:0] = 2'b10;
-                    2'd1: led[3:2] = 2'b10;
-                    2'd2: led[5:4] = 2'b10;
-                    2'd3: led[7:6] = 2'b10;
-                endcase
-            end
-
-            default: led = 8'b00000000;
-
-        endcase
-    end
-
-endmodule# Smart_traffic_controller
-This project implements an FPGA-based emergency-aware traffic controller using Verilog HDL and Quartus II. Designed for the Cyclone II EP2C8T144C8 board, it controls a four-road junction using an FSM and timer. It detects emergency requests and provides road priority through safe Yellow and All-Red transitions.
+## Expected Outcome
+A low-cost FPGA-based traffic controller that automates four-road traffic sequencing and provides emergency road priority through safe signal transitions.
